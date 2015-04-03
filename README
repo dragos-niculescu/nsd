@@ -1,0 +1,10 @@
+
+merge următoarea secvență
+1. set host aaa, bbb
+2. register 
+3. discover 
+4. click on destination 
+5. connect
+6. send text - apare ca me/them 
+7. return în Android nu dă eroare, dar în logcat apar diversi sockeți rămași
+

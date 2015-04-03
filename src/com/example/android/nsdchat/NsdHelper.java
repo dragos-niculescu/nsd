@@ -34,7 +34,7 @@ import android.widget.Toast;
 public class NsdHelper {
 
     Context mContext;
-    final ArrayAdapter<String> adapter; 
+     
     
     NsdManager mNsdManager;
     NsdManager.ResolveListener mResolveListener;
@@ -48,22 +48,35 @@ public class NsdHelper {
 
     NsdServiceInfo mService;
 
+    public class MyNsdServiceInfo { 
+    	NsdServiceInfo mServiceInfo;
+    	public MyNsdServiceInfo(NsdServiceInfo si){ 
+    		mServiceInfo = si; 
+    	}
+    	@Override
+    	public String toString() {
+    		return mServiceInfo.toString();
+    		//return mServiceInfo.getServiceName()+"@" + mServiceInfo.getHost().getHostAddress() + ":" + mServiceInfo.getPort();
+    	}
+    }
+    final ArrayAdapter<MyNsdServiceInfo> adapter;
+    
     public NsdHelper(Context context) {
     	
         mContext = context;
         mNsdManager = (NsdManager) context.getSystemService(Context.NSD_SERVICE);
     	final ListView listview = (ListView)((Activity)mContext).getWindow().getDecorView().findViewById(R.id.ListView1);
-    	ArrayList<String> ls = new ArrayList<String>();
-    	adapter = new ArrayAdapter<String>(mContext, android.R.layout.simple_list_item_1, ls);
+    	ArrayList<MyNsdServiceInfo> ls = new ArrayList<MyNsdServiceInfo>();
+    	adapter = new ArrayAdapter<MyNsdServiceInfo>(mContext, android.R.layout.simple_list_item_1, ls);
     	listview.setAdapter(adapter);
 
     	listview.setOnItemClickListener(new OnItemClickListener() {
     		public void onItemClick(AdapterView<?> parent, View view,
     				int position, long id) {
 
-    			Object o = listview.getItemAtPosition(position);
-    			String str=(String)o;//As you are using Default String Adapter
-    			Toast.makeText(mContext, str,Toast.LENGTH_SHORT).show();
+    		    MyNsdServiceInfo si = (MyNsdServiceInfo)listview.getItemAtPosition(position);
+    		    mService = si.mServiceInfo;
+    		    Toast.makeText(mContext, si.toString(),Toast.LENGTH_SHORT).show();
     		}
     	});
 
@@ -147,11 +160,12 @@ public class NsdHelper {
                 }
                 
                 mService = serviceInfo;
-                final String si = serviceInfo.getServiceName() + "=" + serviceInfo.getHost().toString() + ":" + serviceInfo.getPort();
+                //final String si = serviceInfo.getServiceName() + "=" + serviceInfo.getHost().toString() + ":" + serviceInfo.getPort();
+                final NsdServiceInfo si = serviceInfo; 
                 boolean bFound = false; 
                 for(int i=0 ; i<adapter.getCount() ; i++){
-                	String s = (String)adapter.getItem(i);
-                	if(s.equals(si)){
+                	String s = adapter.getItem(i).toString();
+                	if(s.equals(si.toString())){
                 		bFound = true; 
                 		break;
                 	}
@@ -161,7 +175,7 @@ public class NsdHelper {
                 ((Activity)mContext).runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                    	adapter.add(si);
+                    	adapter.add(new MyNsdServiceInfo(si));
                     	adapter.notifyDataSetChanged();
                     }
                 });
