@@ -16,8 +16,14 @@
 
 package com.example.android.nsdchat;
 
+import java.io.IOException;
+import java.net.InetAddress;
+
 import android.app.Activity;
+import android.content.Context;
 import android.net.nsd.NsdServiceInfo;
+import android.net.wifi.WifiManager;
+import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -25,8 +31,6 @@ import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
-
-import com.example.android.nsdchat.NsdHelper;
 
 public class NsdChatActivity extends Activity {
 
@@ -39,11 +43,55 @@ public class NsdChatActivity extends Activity {
 
     ChatConnection mConnection;
 
+    private static MulticastLock multicastLock;    
+    @Override 
+    protected void onStart() 
+    { 
+    	Log.i(TAG, "Starting ServiceActivity..."); super.onStart(); 
+    	//try { 
+    		Log.i(TAG, "Starting Mutlicast Lock..."); 
+    	WifiManager wifi = (WifiManager) this.getSystemService(Context.WIFI_SERVICE); 
+    	// get the device ip address 
+    	//final InetAddress deviceIpAddress = getDeviceIpAddress(wifi); 
+    	multicastLock = wifi.createMulticastLock(getClass().getName()); 
+    	multicastLock.setReferenceCounted(true); 
+    	multicastLock.acquire(); 
+    	Log.i(TAG, "Starting ZeroConf probe...."); 
+    	//jmdns = JmDNS.create(deviceIpAddress, HOSTNAME); jmdns.addServiceTypeListener(this); 
+    	//} catch (IOException ex) { 
+    		 
+    	// 
+    	Log.i(TAG, "Started ZeroConf probe...."); 
+    }
+    
+    @Override protected void onStop() 
+    { 
+    	Log.i(TAG, "Stopping ServiceActivity..."); 
+    	super.onStop(); 
+    	stopScan(); 
+    }
+
+    private static void stopScan() 
+    { 
+    	try { 
+    		if (multicastLock != null) { 
+    			Log.i(TAG, "Releasing Mutlicast Lock..."); 
+    			multicastLock.release(); 
+    			multicastLock = null; 
+    			} 
+    		} catch (Exception ex) { 
+    			Log.e(TAG, ex.getMessage(), ex); 
+    		} 
+    	}
+
+    
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+        
+    	
         mStatusView = (TextView) findViewById(R.id.status);
 
         mUpdateHandler = new Handler() {
@@ -57,8 +105,13 @@ public class NsdChatActivity extends Activity {
         mConnection = new ChatConnection(mUpdateHandler);
 
         mNsdHelper = new NsdHelper(this);
-        mNsdHelper.initializeNsd();
+        EditText messageView = (EditText) this.findViewById(R.id.hostname);
+    	messageView.setText(mNsdHelper.mServiceName);
 
+        mNsdHelper.initializeNsd();
+        
+        
+        
     }
 
     public void clickAdvertise(View v) {
@@ -77,7 +130,7 @@ public class NsdChatActivity extends Activity {
     public void clickConnect(View v) {
         NsdServiceInfo service = mNsdHelper.getChosenServiceInfo();
         if (service != null) {
-            Log.d(TAG, "Connecting.");
+            Log.d(TAG, "Connecting: " + service);
             mConnection.connectToServer(service.getHost(),
                     service.getPort());
         } else {
@@ -96,6 +149,11 @@ public class NsdChatActivity extends Activity {
         }
     }
 
+    public void clickSetHost(View v){
+    	EditText messageView = (EditText) this.findViewById(R.id.hostname);
+    	mNsdHelper.mServiceName = messageView.getText().toString();
+    }
+    
     public void addChatLine(String line) {
         mStatusView.append("\n" + line);
     }

@@ -16,21 +16,32 @@
 
 package com.example.android.nsdchat;
 
+import java.util.ArrayList;
+
+import android.app.Activity;
 import android.content.Context;
-import android.net.nsd.NsdServiceInfo;
 import android.net.nsd.NsdManager;
+import android.net.nsd.NsdServiceInfo;
 import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.Toast;
+
 
 public class NsdHelper {
 
     Context mContext;
-
+    final ArrayAdapter<String> adapter; 
+    
     NsdManager mNsdManager;
     NsdManager.ResolveListener mResolveListener;
     NsdManager.DiscoveryListener mDiscoveryListener;
     NsdManager.RegistrationListener mRegistrationListener;
 
-    public static final String SERVICE_TYPE = "_http._tcp.";
+    public static final String SERVICE_TYPE = "_chat._tcp.";
 
     public static final String TAG = "NsdHelper";
     public String mServiceName = "NsdChat";
@@ -38,8 +49,25 @@ public class NsdHelper {
     NsdServiceInfo mService;
 
     public NsdHelper(Context context) {
+    	
         mContext = context;
         mNsdManager = (NsdManager) context.getSystemService(Context.NSD_SERVICE);
+    	final ListView listview = (ListView)((Activity)mContext).getWindow().getDecorView().findViewById(R.id.ListView1);
+    	ArrayList<String> ls = new ArrayList<String>();
+    	adapter = new ArrayAdapter<String>(mContext, android.R.layout.simple_list_item_1, ls);
+    	listview.setAdapter(adapter);
+
+    	listview.setOnItemClickListener(new OnItemClickListener() {
+    		public void onItemClick(AdapterView<?> parent, View view,
+    				int position, long id) {
+
+    			Object o = listview.getItemAtPosition(position);
+    			String str=(String)o;//As you are using Default String Adapter
+    			Toast.makeText(mContext, str,Toast.LENGTH_SHORT).show();
+    		}
+    	});
+
+
     }
 
     public void initializeNsd() {
@@ -62,13 +90,14 @@ public class NsdHelper {
             @Override
             public void onServiceFound(NsdServiceInfo service) {
                 Log.d(TAG, "Service discovery success" + service);
-                if (!service.getServiceType().equals(SERVICE_TYPE)) {
-                    Log.d(TAG, "Unknown Service Type: " + service.getServiceType());
-                } else if (service.getServiceName().equals(mServiceName)) {
+                if (service.getServiceType().equals(SERVICE_TYPE)) {
+                	if (service.getServiceName().equals(mServiceName)) {
                     Log.d(TAG, "Same machine: " + mServiceName);
-                } else if (service.getServiceName().contains(mServiceName)){
-                    mNsdManager.resolveService(service, mResolveListener);
-                }
+                	} else {
+                		Log.d(TAG, "Resolve: ");
+                		mNsdManager.resolveService(service, mResolveListener);
+                	}
+                }	
             }
 
             @Override
@@ -99,7 +128,9 @@ public class NsdHelper {
     }
 
     public void initializeResolveListener() {
-        mResolveListener = new NsdManager.ResolveListener() {
+    	
+    	
+    	mResolveListener = new NsdManager.ResolveListener() {
 
             @Override
             public void onResolveFailed(NsdServiceInfo serviceInfo, int errorCode) {
@@ -114,7 +145,27 @@ public class NsdHelper {
                     Log.d(TAG, "Same IP.");
                     return;
                 }
+                
                 mService = serviceInfo;
+                final String si = serviceInfo.getServiceName() + "=" + serviceInfo.getHost().toString() + ":" + serviceInfo.getPort();
+                boolean bFound = false; 
+                for(int i=0 ; i<adapter.getCount() ; i++){
+                	String s = (String)adapter.getItem(i);
+                	if(s.equals(si)){
+                		bFound = true; 
+                		break;
+                	}
+                }
+                final boolean bF = bFound;  
+                if(!bF)
+                ((Activity)mContext).runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                    	adapter.add(si);
+                    	adapter.notifyDataSetChanged();
+                    }
+                });
+                
             }
         };
     }
@@ -167,6 +218,7 @@ public class NsdHelper {
     }
     
     public void tearDown() {
+    	Log.d(TAG, "Reg=" + (mRegistrationListener==null));
         mNsdManager.unregisterService(mRegistrationListener);
     }
 }
